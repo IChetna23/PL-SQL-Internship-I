@@ -1,0 +1,44 @@
+# coll add - procedure
+
+create or replace PROCEDURE COLL_ADD(EMP_ID IN NUMBER, COLL_ID IN VARCHAR2, p_json IN CLOB) AS
+OBJECTC CLOB;
+v_json_obj_laf JSON_OBJECT_T;
+V_RESULT JSON_ELEMENT_T;
+V_ENTITY_OBJECT JSON_OBJECT_T;
+V_OBJ_DATA JSON_ARRAY_T;
+ENTITY VARCHAR2(100);
+V_COLL JSON_OBJECT_T;
+NEW_OBJ CLOB;
+INSERTED_OBJ JSON_OBJECT_T;
+OBJ JSON_OBJECT_T;
+      v_json_obj JSON_OBJECT_T;
+BEGIN
+DBMS_OUTPUT.PUT_LINE('Received JSON: ' || p_json);
+      v_json_obj := JSON_OBJECT_T(p_json);
+SELECT OBJECT_DATA INTO OBJECTC FROM EMPLOYEE_DATA WHERE ID = EMP_ID;
+v_json_obj_laf   := TREAT(JSON_ELEMENT_T.PARSE(OBJECTC) AS JSON_OBJECT_T);
+V_RESULT     := V_JSON_OBJ_LAF.GET('LAF');
+V_ENTITY_OBJECT := TREAT(V_RESULT as JSON_OBJECT_T);
+V_OBJ_DATA  := V_ENTITY_OBJECT.GET_ARRAY('COLLATERAL');
+
+
+
+       FOR j IN 0 .. V_OBJ_DATA.get_size - 1 LOOP 
+       IF V_OBJ_DATA.get(j).is_object THEN
+            V_COLL := TREAT(V_OBJ_DATA.get(j) AS JSON_OBJECT_T);
+            ENTITY := V_COLL.GET_STRING('COLLATRAL_ID');
+
+            -- Check if ENTITY matches COLL_ID
+            IF ENTITY = COLL_ID THEN
+                -- Update the JSON object
+                V_COLL.PUT('SOURCING_TEAM',v_json_obj );                  
+END IF;
+END IF;
+END LOOP;
+  
+  NEW_OBJ := v_json_obj_laf.TO_CLOB();
+UPDATE EMPLOYEE_DATA
+     SET OBJECT_DATA = NEW_OBJ 
+     WHERE ID = EMP_ID ;
+  COMMIT;
+END;
